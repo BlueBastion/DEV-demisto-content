@@ -124,12 +124,22 @@ class Client(BaseClient):
         return data
 
     def get_incidents(self, url_params: dict):
-        data = self._http_request(
-            method='GET',
-            url_suffix='/incidents',
-            params=url_params,
-            timeout=GLOBAL_TIMEOUT
-        )
+        request_args = {
+            'method': 'GET',
+            'url_suffix': '/incidents',
+            'params': url_params,
+            'timeout': GLOBAL_TIMEOUT,
+        }
+        try:
+            data = self._http_request(**request_args)
+        except DemistoException as exception:
+            res = exception.res
+            status_code = res.status_code
+            if status_code in [401, 403]:
+                demisto.debug(f'{INTEGRATION_NAME} - Request returned status code: {status_code}; re-authenticating...')
+                self.generate_new_token()
+                demisto.debug(f'{INTEGRATION_NAME} - Retrying request...')
+                data = self._http_request(**request_args)
         return data
 
 
